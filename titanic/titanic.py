@@ -145,14 +145,16 @@ clf_gb = ske.GradientBoostingClassifier(n_estimators=50)
 test_classifier(clf_gb)
 
 
-# ###################################################################################################
-# # VOTING CLASSIFIER
-# print("Voting Classifier")
-# 
-# eclf = ske.VotingClassifier([('dt', clf_dt), ('rf', clf_rf), ('gb', clf_gb)])
-# test_classifier(eclf)
+###################################################################################################
+# VOTING CLASSIFIER
+print("Voting Classifier")
+
+eclf = ske.VotingClassifier([('dt', clf_dt), ('rf', clf_rf), ('gb', clf_gb)])
+test_classifier(eclf)
 
 
+###################################################################################################
+# TENSORFLOW
 feature_columns = []
 
 for key in X.keys():
@@ -168,7 +170,6 @@ def train_input_fn(features, labels, batch_size):
     dataset = dataset.shuffle(10).repeat().batch(batch_size)
     return dataset
 
-# TENSORFLOW
 tf_clf_dnn = tf.estimator.DNNClassifier(hidden_units=[10, 10], feature_columns=feature_columns, n_classes=2)
 tf_clf_dnn.train(input_fn=lambda:train_input_fn(X_train, y_train, batch_size=100), steps=400 )
 tf_clf_dnn.score(X_test, y_test)
