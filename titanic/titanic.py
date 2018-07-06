@@ -13,7 +13,7 @@ from tensorflow.contrib import learn
 import seaborn
 
 # READ INPUT DATA
-titanic_df = pd.read_excel('/home/burak/Desktop/DATA_SCIENCE_Workshop/titanic3.xls', 'titanic3', index_col=None, na_values=['NA'])
+titanic_df = pd.read_excel('titanic3.xls', 'titanic3', index_col=None, na_values=['NA'])
 
 titanic_df['pclass'] = titanic_df['pclass'].astype(object)
 
@@ -78,11 +78,11 @@ def preprocess_titanic_df(df):
 processed_df = preprocess_titanic_df(titanic_df)
 
 # Set X and Y
-X = processed_df.drop(['survived'], axis=1).values
-y = processed_df['survived'].values
+X = processed_df.drop(['survived'], axis=1)
+y = processed_df['survived']
 
 # Set training data (0.2 means %80 of data used for training)
-X_train, X_test, y_train, y_test = cross_validation.train_test_split(X,y,test_size=0.2)
+X_train, X_test, y_train, y_test = cross_validation.train_test_split(X.values,y.values,test_size=0.2)
 
 seaborn.heatmap(processed_df.corr(), annot=True, cmap="RdYlGn")
 plt.show()
@@ -107,7 +107,7 @@ clf_dt.score(X_test,  y_test)
 shuffle_validator = cross_validation.ShuffleSplit(len(X), n_iter=20, test_size=0.2, random_state=0)
 
 def test_classifier(clf):
-    scores = cross_validation.cross_val_score(clf, X, y, cv=shuffle_validator)
+    scores = cross_validation.cross_val_score(clf, X.values, y.values, cv=shuffle_validator)
     print("Accuracy: %0.4f (+/- %0.2f)" % (scores.mean(), scores.std()))
 
 test_classifier(clf_dt)
@@ -145,16 +145,31 @@ clf_gb = ske.GradientBoostingClassifier(n_estimators=50)
 test_classifier(clf_gb)
 
 
-###################################################################################################
-# VOTING CLASSIFIER
-print("Voting Classifier")
+# ###################################################################################################
+# # VOTING CLASSIFIER
+# print("Voting Classifier")
+# 
+# eclf = ske.VotingClassifier([('dt', clf_dt), ('rf', clf_rf), ('gb', clf_gb)])
+# test_classifier(eclf)
 
-eclf = ske.VotingClassifier([('dt', clf_dt), ('rf', clf_rf), ('gb', clf_gb)])
-test_classifier(eclf)
 
+feature_columns = []
+
+for key in X.keys():
+    feature_columns.append(tf.feature_column.numeric_column(key=key))
+
+
+print(feature_columns)
+
+
+def train_input_fn(features, labels, batch_size):
+    """An input function for training"""
+    dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
+    dataset = dataset.shuffle(10).repeat().batch(batch_size)
+    return dataset
 
 # TENSORFLOW
-# tf_clf_dnn = learn.DNNClassifier(hidden_units=[20, 40, 20], feature_columns=None, n_classes=2)
-# tf_clf_dnn.fit(x=X_train, y=y_train, batch_size=256, steps=1000 )
-# tf_clf_dnn.score(X_test, y_test)
+tf_clf_dnn = tf.estimator.DNNClassifier(hidden_units=[10, 10], feature_columns=feature_columns, n_classes=2)
+tf_clf_dnn.train(input_fn=lambda:train_input_fn(X_train, y_train, batch_size=100), steps=400 )
+tf_clf_dnn.score(X_test, y_test)
 
